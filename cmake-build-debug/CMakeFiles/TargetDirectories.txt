@@ -1,0 +1,3 @@
+/Users/vanessa/Dropbox/Documents/Disciplinas/ED/2019-1/Trabalho/cardapio_pizza/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/vanessa/Dropbox/Documents/Disciplinas/ED/2019-1/Trabalho/cardapio_pizza/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/vanessa/Dropbox/Documents/Disciplinas/ED/2019-1/Trabalho/cardapio_pizza/cmake-build-debug/CMakeFiles/cardapio_pizza.dir
