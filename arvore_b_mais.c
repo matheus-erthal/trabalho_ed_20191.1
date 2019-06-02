@@ -9,6 +9,7 @@
 #include "lista_pizzas.h"
 #include "metadados.h"
 #include "no_folha.h"
+#include "no_interno.h"
 #include "pizza.h"
 
 
@@ -21,10 +22,26 @@ int busca(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, char
     // menor - esquerda
 
     if(meta->raiz_folha){
-        FILE* arq_folhas = fopen(nome_arquivo_dados, "rb");
-        fseek(arq_folhas, meta->pont_raiz, 0);
-        TNoFolha* raiz = le_no_folha(meta->d, arq_folhas);
+        // FILE* arq_folhas = fopen(nome_arquivo_dados, "rb");
+        // fseek(arq_folhas, meta->pont_raiz, 0);
+        // TNoFolha* raiz = le_no_folha(meta->d, arq_folhas);
         return pont_raiz;
+    }else{
+        int folha = -1;
+        int no_atual = pont_raiz;
+        FILE* arq_indices = fopen(nome_arquivo_indice, "rb");
+        while(folha == -1){
+            TNoInterno* pagina = le_no_interno(d, arq_indices);
+            int i;
+            for(i = 0; cod >= pagina->chaves[i] && i <= pagina->m; i++);
+            if(pagina->aponta_folha){
+                folha = pagina->p[i];
+            }else{
+                no_atual = pagina->p[i];
+            }
+        }
+        fclose(arq_indices);
+        return folha;
     }
     return INT_MAX;
 }
