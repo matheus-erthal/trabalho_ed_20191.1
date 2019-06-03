@@ -31,9 +31,10 @@ int busca(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, char
         int no_atual = pont_raiz;
         FILE* arq_indices = fopen(nome_arquivo_indice, "rb");
         while(folha == -1){
+            fseek(arq_indices, no_atual, 0);
             TNoInterno* pagina = le_no_interno(d, arq_indices);
             int i;
-            for(i = 0; cod >= pagina->chaves[i] && i <= pagina->m; i++);
+            for(i = 0; cod >= pagina->chaves[i] && i < pagina->m; i++);
             if(pagina->aponta_folha){
                 folha = pagina->p[i];
             }else{
