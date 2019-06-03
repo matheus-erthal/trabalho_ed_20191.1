@@ -890,9 +890,7 @@ BEGIN_TESTS();
         pont = exclui(10, NOME_ARQUIVO_METADADOS, NOME_ARQUIVO_INDICE, NOME_ARQUIVO_DADOS, 2);
         ASSERT_EQUAL(0, pont);
 
-        //Como o segundo noh da arvore foi excluido, arquivo de metadados tem que ter sido atualizado para
-        //que o proximo no livre aponte para esse no (para evitar que o arquivo fique cheio de buracos no futuro)
-        TMetadados *tabMetadados = metadados(D, 0, 0, tamanho_no_interno(D), 1 * tamanho_no_folha(D));
+        TMetadados *tabMetadados = metadados(D, 0, 0, tamanho_no_interno(D), 3 * tamanho_no_folha(D));
         TMetadados *tabMetadadosSaida = le_arq_metadados(NOME_ARQUIVO_METADADOS);
         ASSERT_EQUAL_CMP(D, tabMetadados, tabMetadadosSaida, cmp_metadados);
         free(tabMetadados);
@@ -918,7 +916,7 @@ BEGIN_TESTS();
                                                                   pizza(20, "Lombinho", "Salgada", 32)
                                                     ),
                                                     cria_no_folha(D, 0, 2 * tamanho_no_folha(D),
-                                                                  2, //Esse noh foi eh lixo -- fica como estava -- nao ha mais ninguem apontando para ele
+                                                                  2, //Esse noh eh lixo -- fica como estava -- nao ha mais ninguem apontando para ele
                                                                   pizza(15, "Bianca", "Salgada", 30),
                                                                   pizza(20, "Lombinho", "Salgada", 32)
                                                     ),
@@ -944,10 +942,7 @@ BEGIN_TESTS();
         pont = exclui(13, NOME_ARQUIVO_METADADOS, NOME_ARQUIVO_INDICE, NOME_ARQUIVO_DADOS, 2);
         ASSERT_EQUAL(0, pont);
 
-        //Como o segundo noh folha da arvore foi excluido, arquivo de metadados tem que ter sido atualizado para
-        //que o proximo no livre aponte para esse no (para evitar que o arquivo fique cheio de buracos no futuro)
-        //O mesmo vale para o noh interno -- proximo noh livre aponta para a raiz, que foi a ultima a ser excluida
-        TMetadados *tabMetadados = metadados(D, 0, 0, 0, 1 * tamanho_no_folha(D));
+        TMetadados *tabMetadados = metadados(D, 0, 0, 3 * tamanho_no_interno(D), 6 * tamanho_no_folha(D));
         TMetadados *tabMetadadosSaida = le_arq_metadados(NOME_ARQUIVO_METADADOS);
         ASSERT_EQUAL_CMP(D, tabMetadados, tabMetadadosSaida, cmp_metadados);
         free(tabMetadados);
