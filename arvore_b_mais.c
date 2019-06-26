@@ -47,8 +47,8 @@ int busca(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, char
     }
 }
 
-// função que ajeita o vetor de clientes para inserção
-void _adapta_vetor(TPizza** clientes, int inicio, int m){
+// função que ajeita o vetor de clientes para inserção sem partição
+void _adapta_vetor_sem_particao(TPizza** clientes, int inicio, int m){
     int i;
     TPizza* escolhido = NULL;
     TPizza* temp;
@@ -58,6 +58,55 @@ void _adapta_vetor(TPizza** clientes, int inicio, int m){
         escolhido = temp;
     }
     return;
+}
+
+// função que ajeita o vetor de clientes para inserção com partição
+void _adapta_vetor_com_particao(TPizza** p, TPizza** q, int d, TPizza* nova_pizza){
+    TPizza **temp = (TPizza**)malloc(sizeof(TPizza*) * (2 * d + 1));
+    int i;
+    int posicionado = 0;
+    for(i = 0; i < 2 * d + 1; i++){
+        if(posicionado){
+            temp[i] = p[i-1];
+        }else{
+            if(nova_pizza->cod < p[i]->cod){
+                temp[i] = nova_pizza;
+                posicionado = 1;
+            }else{
+                temp[i] = p[i];
+            }
+        }
+    }
+    for(i = 0; i < 2 * d + 1; i++){
+        if(i < d){
+            p[i] = temp[i];
+        }else{
+            q[i-d] = temp[i];
+        }
+    }
+
+    free(temp);
+}
+
+
+void particiona_no_folha(TNoFolha* folha, TPizza* nova_pizza, int d, char *nome_arquivo_metadados, char *nome_arquivo_indice, char *nome_arquivo_dados){
+    TNoFolha* nova_folha = no_folha(d, d+1, folha->pont_pai, folha->pont_prox);
+    
+    _adapta_vetor_com_particao(folha->clientes, nova_folha->clientes, d, nova_pizza);
+
+    folha->m = d;
+
+    printf("m folha = %d/", folha->m);
+    
+
+    // FILE* arq_indice = fopen(nome_arquivo_indice, "rb");
+
+
+
+
+
+    
+
 }
 
 int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo_metadados, char *nome_arquivo_indice, char *nome_arquivo_dados, int d)
@@ -81,7 +130,7 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
             if(folha->clientes[i]->cod == nova_pizza->cod) return -1;
         }
         // ajeita o vetor para receber o registro na posição correta
-        _adapta_vetor(folha->clientes, i, folha->m);
+        _adapta_vetor_sem_particao(folha->clientes, i, folha->m);
         // atribui o novo registro a posição
         folha->clientes[i] = nova_pizza;
         // atualiza o valor de m da página
@@ -96,7 +145,7 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
         return posicao;
     // se a página estiver cheia
     }else{
-        printf("%d->", -1);
+        particiona_no_folha(folha, nova_pizza, d, nome_arquivo_metadados, nome_arquivo_indice, nome_arquivo_dados);
         fclose(arq_dados);
         return INT_MAX;
     }
