@@ -112,3 +112,80 @@ void carrega_dados(int d, char *nome_arquivo_entrada, char *nome_arquivo_metadad
 {
     //TODO: Implementar essa funcao
 }
+
+void main() {
+    printf("*********** Menu de Operações da Pizzaria ***********\n");
+    printf("Escolha uma das opções a seguir: \n");
+    printf("(1) Inserir uma pizza no cardápio;\n");
+    printf("(2) Remover uma pizza no cardápio;\n");
+    printf("(3) Buscar informações de uma pizza;\n");
+    printf("(4) Alterar informações de uma pizza;\n");
+    printf("(5) Buscar pizzas por categoria;\n");
+    printf("(6) Remover todas as pizzas por categoria;\n");
+    printf("(7) Sair do menu;\n");    
+    printf("*****************************************************\n");
+
+    int valor;
+    scanf("%d", &valor);
+
+    char arqMetadados[100] = "metadados.dat";
+    char arqIndice[100] = "indice.dat";
+    char arqDados[100] = "clientes.dat";
+
+    printf("Informe o valor da ordem da árvore: ");
+    int ordem;
+    scanf("%d", &ordem);
+    printf("\n");
+
+    switch(valor) {
+        case 1: 
+            printf("Operação: Inserir pizza no cardápio\n");
+            printf("Informe o código da pizza: ");
+            int codigo;
+            scanf("%d", &codigo);
+            printf("\n");
+
+            printf("Informe o nome da pizza: ");
+            char nomePizza[50];
+            scanf("%s", nomePizza);
+            printf("\n");
+
+            printf("Informe a categoria da pizza (Salgada, Doce ou Especial): ");
+            char categoria[20];
+            scanf("%s", categoria);
+            printf("\n");
+
+            printf("Informe o valor da pizza: ");
+            double preco;
+            scanf("%lf", &preco);
+            printf("\n");
+
+            //insere(codigo, nomePizza, categoria, preco, arqMetadados, arqIndice, arqDados, ordem);
+
+            break;
+        case 2:
+            printf("Operação: Remover uma pizza do cardápio\n");
+            printf("Infelizmente ainda não é possível remover itens do cardápio\n");
+            break;
+        case 3:
+            printf("Operação: Buscar informações de uma pizza\n");
+            printf("Informe o código da pizza procura: ");
+            int codigoBusca;
+            scanf("%d", codigoBusca);
+
+            busca(codigoBusca, arqMetadados, arqIndice, arqDados, ordem);
+            break;
+        case 4: 
+            //operação de editar infos; Só pode editar nome, categoria e preço;
+            break;
+        case 5:
+            //operação de busca por categoria;
+            break;
+        case 6:
+            //remover todas as pizzas de uma categoria
+            break;
+        case 7:
+            exit(1);
+            break;
+    }
+}
