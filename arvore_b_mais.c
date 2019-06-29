@@ -132,58 +132,68 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
         return posicao;
     // se a página estiver cheia
     }else{
+        // cria nova folha a partir da folha que está cheia
         TNoFolha* nova_folha = _particiona_folha(folha, d, nova_pizza);
-        fseek(arq_dados, 0L, SEEK_END);
-        int posicao_nova_folha = ftell(arq_dados);
+        // abre o arquivo de metadados e obtem o ponteiro da nova folha
+        TMetadados* metadados = le_metadados(arq_metadados);
+        int posicao_nova_folha = metadados->pont_prox_no_folha_livre;
+        // atualiza os ponteiros de próximo das folhas
         nova_folha->pont_prox = folha->pont_prox;
         folha->pont_prox = posicao_nova_folha;
+        // salva a folha inicial
         fseek(arq_dados, posicao, SEEK_SET);
         salva_no_folha(d, folha, arq_dados);
+        
+        // declara o código que vai subir para o pai
         int escolhido = nova_folha->pizzas[0]->cod;
+        // abre o arquivo de índice
         FILE* arq_indice = fopen(nome_arquivo_indice, "rb+");
+        // se a folha não for raiz
         if(folha->pont_pai != -1){
+            // lê o pai da folha no arquivo de nós internos 
             fseek(arq_indice, folha->pont_pai, SEEK_SET);
             TNoInterno* pai = le_no_interno(d, arq_indice);
 
+            // se o pai não estiver cheio
             if(pai->m < 2 * d){
+                // encontra posição da nova chave
                 for(i = 0; i < pai->m && pai->chaves[i] < escolhido; i++);
+                // ajusta os vetores de chaves e de ponteiros para entrada dos novos
                 for(j = pai->m; j >= i; j--){
                     pai->chaves[j] = pai->chaves[j - 1];
                     pai->p[j+1] = pai->p[j];
                 }
-                pai->chaves[i] = escolhido;
+                // atualiza o valor de m
                 pai->m++;
+                // insere a chave e o ponteiro na lista
+                pai->chaves[i] = escolhido;
                 pai->p[i+1] = posicao_nova_folha;
+                // coloca a nova folha para apontar para o pai(no caso o mesmo da folha original)
                 nova_folha->pont_pai = folha->pont_pai;
-                // printf("folha_antiga=%d", posicao);
-                // printf("nova_folha=%d", posicao_nova_folha);
-                // printf("no_interno=%d", folha->pont_pai);
+                // salva o novo nó folha
                 fseek(arq_dados, posicao_nova_folha, SEEK_SET);
                 salva_no_folha(d, nova_folha, arq_dados);
+                // salva o nó interno(pai)
                 fseek(arq_indice, folha->pont_pai, SEEK_SET);
                 salva_no_interno(d, pai, arq_indice);
-
+                // atualiza arquivo de metadados
+                fseek(arq_dados, 0L, SEEK_END);
+                int ultima_posicao = ftell(arq_dados);
+                metadados->pont_prox_no_folha_livre = ultima_posicao;
+                fseek(arq_metadados, 0L, SEEK_SET);
+                salva_metadados(metadados, arq_metadados);
+            // se o pai estiver cheio
+            }else{
+                printf("particiona para cima->");
             }
-            printf("\n");
-            fseek(arq_dados, 0L, SEEK_END);
-            int ultima_posicao = ftell(arq_dados);
-            TMetadados* metadados = le_metadados(arq_metadados);
-            metadados->pont_prox_no_folha_livre = ultima_posicao;
-            salva_metadados(metadados, arq_metadados);
             
-            // printf("codigo a inserir: %d\n", cod);
-            // printf("Folha 1:\n");
-            // imprime_no_folha(d, folha);
-            // printf("Folha 2:\n");
-            // imprime_no_folha(d, nova_folha);
-            // printf("Nó interno:\n");
-            // imprime_no_interno(d, pai);
-            // printf("Metadados:\n");
-            // imprime_metadados(metadados);
+            // fecha os arquivos utilizados
             fclose(arq_indice);
             fclose(arq_metadados);
             fclose(arq_dados);
+            // todo
             return posicao;
+        // se a folha for a raiz
         }else{
             printf("sem pai->");
         }
