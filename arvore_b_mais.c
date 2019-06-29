@@ -48,14 +48,14 @@ int busca(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, char
     }
 }
 
-// função que ajeita o vetor de clientes para inserção sem partição
-void _adapta_vetor_sem_particao(TPizza** clientes, int inicio, int m){
+// função que ajeita o vetor de pizzas para inserção sem partição
+void _adapta_vetor_sem_particao(TPizza** pizzas, int inicio, int m){
     int i;
     TPizza* escolhido = NULL;
     TPizza* temp;
     for(i = inicio; i <= m; i++){
-        temp = clientes[i];
-        clientes[i] = escolhido;
+        temp = pizzas[i];
+        pizzas[i] = escolhido;
         escolhido = temp;
     }
     return;
@@ -69,23 +69,23 @@ TNoFolha* _particiona_folha(TNoFolha* p, int d, TPizza* nova_pizza){
     int posicionado = 0;
     for(i = 0; i < 2 * d + 1; i++){
         if(posicionado){
-            temp[i] = p->clientes[i-1];
+            temp[i] = p->pizzas[i-1];
         }else{
-            if(nova_pizza->cod < p->clientes[i]->cod){
+            if(nova_pizza->cod < p->pizzas[i]->cod){
                 temp[i] = nova_pizza;
                 posicionado = 1;
             }else{
-                temp[i] = p->clientes[i];
+                temp[i] = p->pizzas[i];
             }
         }
     }
     for(i = 0; i < 2 * d + 1; i++){
         if(i < d){
-            p->clientes[i] = temp[i];
+            p->pizzas[i] = temp[i];
         }else{
-            q->clientes[i-d] = temp[i];
+            q->pizzas[i-d] = temp[i];
             if(i < 2 * d){
-                p->clientes[i] = NULL;
+                p->pizzas[i] = NULL;
             }
         }
     }
@@ -100,6 +100,8 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
 	int posicao = busca(cod, nome_arquivo_metadados, nome_arquivo_indice, nome_arquivo_dados, d);
     // abre o arquivo de dados
     FILE* arq_dados = fopen(nome_arquivo_dados, "rb+");
+    // abre o arquivo de metadados
+    FILE* arq_metadados = fopen(nome_arquivo_metadados, "rb+");
     // vai para a posição onde o dado deve ser inserido
     fseek(arq_dados, posicao, SEEK_SET);
     // lê a página da memória
@@ -110,14 +112,14 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
     // se a página não estiver cheia
     if(folha->m < 2 * d){
         // descobre a posição que o novo registro deve ser inserido dentro da página
-        for(i = 0; i < folha->m && nova_pizza->cod >= folha->clientes[i]->cod; i++){
+        for(i = 0; i < folha->m && nova_pizza->cod >= folha->pizzas[i]->cod; i++){
             // se o registro já existe, retorna -1
-            if(folha->clientes[i]->cod == nova_pizza->cod) return -1;
+            if(folha->pizzas[i]->cod == nova_pizza->cod) return -1;
         }
         // ajeita o vetor para receber o registro na posição correta
-        _adapta_vetor_sem_particao(folha->clientes, i, folha->m);
+        _adapta_vetor_sem_particao(folha->pizzas, i, folha->m);
         // atribui o novo registro a posição
-        folha->clientes[i] = nova_pizza;
+        folha->pizzas[i] = nova_pizza;
         // atualiza o valor de m da página
         folha->m++;
         // volta para a posição inicial da página no arquivo
@@ -137,7 +139,7 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
         folha->pont_prox = posicao_nova_folha;
         fseek(arq_dados, posicao, SEEK_SET);
         salva_no_folha(d, folha, arq_dados);
-        int escolhido = nova_folha->clientes[0]->cod;
+        int escolhido = nova_folha->pizzas[0]->cod;
         FILE* arq_indice = fopen(nome_arquivo_indice, "rb+");
         if(folha->pont_pai != -1){
             fseek(arq_indice, folha->pont_pai, SEEK_SET);
@@ -153,15 +155,22 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
                 pai->m++;
                 pai->p[i+1] = posicao_nova_folha;
                 nova_folha->pont_pai = folha->pont_pai;
-                printf("folha_antiga=%d", posicao);
-                printf("nova_folha=%d", posicao_nova_folha);
-                printf("no_interno=%d", folha->pont_pai);
+                // printf("folha_antiga=%d", posicao);
+                // printf("nova_folha=%d", posicao_nova_folha);
+                // printf("no_interno=%d", folha->pont_pai);
                 fseek(arq_dados, posicao_nova_folha, SEEK_SET);
                 salva_no_folha(d, nova_folha, arq_dados);
                 fseek(arq_indice, folha->pont_pai, SEEK_SET);
                 salva_no_interno(d, pai, arq_indice);
 
             }
+            printf("\n");
+            fseek(arq_dados, 0L, SEEK_END);
+            int ultima_posicao = ftell(arq_dados);
+            TMetadados* metadados = le_metadados(arq_metadados);
+            metadados->pont_prox_no_folha_livre = ultima_posicao;
+            salva_metadados(metadados, arq_metadados);
+            
             // printf("codigo a inserir: %d\n", cod);
             // printf("Folha 1:\n");
             // imprime_no_folha(d, folha);
@@ -169,7 +178,10 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
             // imprime_no_folha(d, nova_folha);
             // printf("Nó interno:\n");
             // imprime_no_interno(d, pai);
+            // printf("Metadados:\n");
+            // imprime_metadados(metadados);
             fclose(arq_indice);
+            fclose(arq_metadados);
             fclose(arq_dados);
             return posicao;
         }else{
@@ -211,7 +223,7 @@ void carrega_dados(int d, char *nome_arquivo_entrada, char *nome_arquivo_metadad
 
 //     char arqMetadados[100] = "metadados.dat";
 //     char arqIndice[100] = "indice.dat";
-//     char arqDados[100] = "clientes.dat";
+//     char arqDados[100] = "pizzas.dat";
 
 //     printf("Informe o valor da ordem da árvore: ");
 //     int ordem;

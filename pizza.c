@@ -10,16 +10,16 @@
 
 void imprime_pizza(TPizza *p)
 {
-	printf("%d, %s, (%s), R$ %.2f\n", p->cod, p->nome, p->descricao, p->preco);
+	printf("%d, %s, (%s), R$ %.2f\n", p->cod, p->nome, p->categoria, p->preco);
 }
 
-TPizza *pizza(int cod, char *nome, char *descricao, float preco)
+TPizza *pizza(int cod, char *nome, char *categoria, float preco)
 {
 	TPizza *p = (TPizza *) malloc(sizeof(TPizza));
 	if (p) memset(p, 0, sizeof(TPizza));
 	p->cod = cod;
 	strcpy(p->nome, nome);
-	strcpy(p->descricao, descricao);
+	strcpy(p->categoria, categoria);
 	p->preco = preco;
 	return p;
 }
@@ -28,7 +28,7 @@ void salva_pizza(TPizza *p, FILE *out)
 {
 	fwrite(&p->cod, sizeof(int), 1, out);
 	fwrite(p->nome, sizeof(char), sizeof(p->nome), out);
-	fwrite(p->descricao, sizeof(char), sizeof(p->descricao), out);
+	fwrite(p->categoria, sizeof(char), sizeof(p->categoria), out);
 	fwrite(&p->preco, sizeof(float), 1, out);
 }
 
@@ -40,7 +40,7 @@ TPizza *le_pizza(FILE *in)
 		return NULL;
 	}
 	fread(p->nome, sizeof(char), sizeof(p->nome), in);
-	fread(p->descricao, sizeof(char), sizeof(p->descricao), in);
+	fread(p->categoria, sizeof(char), sizeof(p->categoria), in);
 	fread(&p->preco, sizeof(float), 1, in);
 	return p;
 }
@@ -56,7 +56,7 @@ int cmp_pizza(TPizza *p1, TPizza *p2)
 	if (strcmp(p1->nome, p2->nome) != 0) {
 		return 0;
 	}
-	if (strcmp(p1->descricao, p2->descricao) != 0) {
+	if (strcmp(p1->categoria, p2->categoria) != 0) {
 		return 0;
 	}
 	if (p1->preco != p2->preco) {

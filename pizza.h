@@ -6,7 +6,7 @@
 typedef struct pizza {
 	int cod;
 	char nome[50];
-	char descricao[20];
+	char categoria[20];
 	float preco;
 } TPizza;
 
