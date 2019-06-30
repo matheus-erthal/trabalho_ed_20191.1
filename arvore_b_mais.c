@@ -94,6 +94,100 @@ TNoFolha* _particiona_folha(TNoFolha* p, int d, TPizza* nova_pizza){
     return q;
 }
 
+// função que particiona o nó passado e retorna um novo nó
+TNoInterno* _particiona_no_interno(TNoInterno* p, int d, int novo_cod, int pont_nova_folha){
+    int i, j;
+    int* temp_chaves = (int*)malloc(sizeof(int) * (2 * d + 1));
+    int* temp_p = (int*)malloc(sizeof(int) * (2 * d + 2));
+
+    // encontra posição da nova chave
+    for(i = 0; i < p->m && p->chaves[i] < novo_cod; i++);
+    // ajusta os vetores de chaves e de ponteiros para entrada dos novos
+    for(j = 0; j < i; j++){
+        temp_chaves[j] = p->chaves[j];
+        temp_p[j] = p->p[j];
+    }
+    for(j = p->m+1; j >= i; j--){
+        if(j < p->m+1){
+            temp_chaves[j] = p->chaves[j - 1];
+        }
+        temp_p[j+1] = p->p[j];
+    }
+    // atribui os novos valores nas posições corretas
+    temp_chaves[i] = novo_cod;
+    temp_p[i] = pont_nova_folha;
+
+    // cria novo no interno
+    TNoInterno* novo_no = no_interno(d, d, p->pont_pai, p->aponta_folha);
+    p->m = d;
+
+    // coloca as chaves nas posições corretas
+    for(i = 0; i < 2 * d; i++){
+        if(i < d){
+            p->chaves[i] = temp_chaves[i];
+        }else{
+            p->chaves[i] = -1;
+            novo_no->chaves[i-d] = temp_chaves[i + 1]; 
+        }
+    }
+
+    // coloca os ponteiros nas posições corretas
+    for(i = 0; i <= 2 * d+1; i++){
+        if(i < d + 1){
+            p->p[i] = temp_p[i];
+        }else{
+            p->p[i] = -1;
+            novo_no->p[i-d-1] = temp_p[i]; 
+        }
+    }
+
+    free(temp_chaves);
+    free(temp_p);
+
+    return novo_no;
+
+}
+
+// função que descobre elemento do meio num no interno
+int _descobre_quem_sobe(TNoInterno* p, int d, int novo_cod){
+    int i, j;
+    int* temp_chaves = (int*)malloc(sizeof(int) * (2 * d + 1));
+    for(i = 0; i < p->m && p->chaves[i] < novo_cod; i++);
+    // ajusta o vetor de chaves para entrada do novo
+    for(j = 0; j < i; j++){
+        temp_chaves[j] = p->chaves[j];
+    }
+    for(j = p->m; j >= i; j--){
+        temp_chaves[j] = p->chaves[j - 1];
+    }
+    temp_chaves[i] = novo_cod;
+    int escolhido = temp_chaves[d];
+    free(temp_chaves);
+    return escolhido;
+}
+
+// função que atualiza o ponteiro do pai nas folhas ou nós internos
+void _atualiza_filhos(TNoInterno* p, int posicao_pai, FILE* arq_dados, FILE* arq_indice, int d){
+    int i;
+    if(p->aponta_folha){
+        for(i = 0; i <= p->m; i++){
+            fseek(arq_dados, p->p[i], SEEK_SET);
+            TNoFolha* no = le_no_folha(d, arq_dados);
+            no->pont_pai = posicao_pai;
+            fseek(arq_dados, p->p[i], SEEK_SET);
+            salva_no_folha(d, no, arq_dados);
+        }
+    }else{
+        for(i = 0; i <= p->m; i++){
+            fseek(arq_indice, p->p[i], SEEK_SET);
+            TNoInterno* no = le_no_interno(d, arq_indice);
+            no->pont_pai = posicao_pai;
+            fseek(arq_indice, p->p[i], SEEK_SET);
+            salva_no_interno(d, no, arq_indice);
+        }
+    }
+}
+
 int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo_metadados, char *nome_arquivo_indice, char *nome_arquivo_dados, int d)
 {   
     // busca a posição onde o dado deve ser inserido
@@ -144,7 +238,12 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
         fseek(arq_dados, posicao, SEEK_SET);
         salva_no_folha(d, folha, arq_dados);
         // descobre em qual das folhas está o novo código
-        int ta_na_primeira = (folha->pizzas[0]->cod == cod || folha->pizzas[1]->cod) ? 1 : 0;
+        int ta_na_primeira = 0;
+        for(i = 0; i < d; i++){
+            if(folha->pizzas[i]->cod == cod){
+                ta_na_primeira = 1;
+            }
+        }
         // declara o código que vai subir para o pai
         int escolhido = nova_folha->pizzas[0]->cod;
         // abre o arquivo de índice
@@ -154,7 +253,7 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
             // lê o pai da folha no arquivo de nós internos 
             fseek(arq_indice, folha->pont_pai, SEEK_SET);
             TNoInterno* pai = le_no_interno(d, arq_indice);
-
+            int posicao_pai = folha->pont_pai;
             // se o pai não estiver cheio
             if(pai->m < 2 * d){
                 // encontra posição da nova chave
@@ -185,7 +284,66 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
                 salva_metadados(metadados, arq_metadados);
             // se o pai estiver cheio
             }else{
-                printf("particiona para cima->");
+                int sem_raiz = 0;
+                TNoInterno* novo_no;
+                int posicao_novo_no;
+                while(pai->m == 2 * d && !sem_raiz){
+                    int quem_sobe = _descobre_quem_sobe(pai, d, escolhido);
+                    novo_no = _particiona_no_interno(pai, d, escolhido, posicao_nova_folha);
+                    fseek(arq_indice, posicao_pai, SEEK_SET);
+                    salva_no_interno(d, pai, arq_indice);
+                    fseek(arq_indice, 0, SEEK_END);
+                    posicao_novo_no = ftell(arq_indice);
+                    _atualiza_filhos(novo_no, posicao_novo_no, arq_dados, arq_indice, d);
+                    escolhido = quem_sobe;
+                    salva_no_interno(d, novo_no, arq_indice);
+                    if(novo_no->pont_pai == -1){
+                        sem_raiz = 1;
+                    }else{
+                        fseek(arq_indice, novo_no->pont_pai, SEEK_SET);
+                        pai = le_no_interno(d, arq_indice);
+                    }
+                    if(sem_raiz){
+                        TNoInterno* novo_no_raiz = no_interno(d, 1, -1, 0);
+                        // adiciona a chave que subiu
+                        novo_no_raiz->chaves[0] = escolhido;
+                        // adiciona os ponteiros para as folhas
+                        novo_no_raiz->p[0] = posicao_pai;
+                        novo_no_raiz->p[1] = posicao_novo_no;
+                         // salva o novo nó folha
+                        fseek(arq_dados, posicao_nova_folha, SEEK_SET);
+                        salva_no_folha(d, nova_folha, arq_dados);
+                        fseek(arq_indice, 0, SEEK_END);
+                        posicao_pai = ftell(arq_indice);
+                        salva_no_interno(d, novo_no_raiz, arq_indice);
+                        _atualiza_filhos(novo_no_raiz, posicao_pai, arq_dados, arq_indice, d);
+                        // atualiza arquivo de metadados
+                        fseek(arq_dados, 0L, SEEK_END);
+                        fseek(arq_indice, 0L, SEEK_END);
+                        metadados->pont_prox_no_folha_livre = ftell(arq_dados);;
+                        metadados->pont_prox_no_interno_livre = ftell(arq_indice);
+                        metadados->raiz_folha = 0;
+                        metadados->pont_raiz = posicao_pai;
+                        fseek(arq_metadados, 0, SEEK_SET);
+                        printf("\n");
+                        for(i = 0; i < 3; i++){
+                            fseek(arq_indice, i * tamanho_no_interno(d), SEEK_SET);
+                            TNoInterno* no = le_no_interno(d, arq_indice);
+                            imprime_no_interno(d, no);
+                            for(j = 0; j <= no->m; j++){
+                                if(no->aponta_folha){
+                                    printf("\t");
+                                    fseek(arq_dados, no->p[j], SEEK_SET);
+                                    TNoFolha* f = le_no_folha(d, arq_dados);
+                                    imprime_no_folha(d, f);
+                                }
+                            }
+                        }
+                        printf("\n");
+                        salva_metadados(metadados, arq_metadados);
+                    }
+                }
+
             }
             
             // fecha os arquivos utilizados
@@ -211,14 +369,7 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
             int posicao_pai = ftell(arq_indice);
             salva_no_interno(d, novo_no_interno, arq_indice);
             
-            // atualiza o ponteiro do pai nas folhas
-            for(i = 0; i <= novo_no_interno->m; i++){
-                fseek(arq_dados, novo_no_interno->p[i], SEEK_SET);
-                TNoFolha* no = le_no_folha(d, arq_dados);
-                no->pont_pai = posicao_pai;
-                fseek(arq_dados, novo_no_interno->p[i], SEEK_SET);
-                salva_no_folha(d, no, arq_dados);
-            }
+            _atualiza_filhos(novo_no_interno, posicao_pai, arq_dados, arq_indice, d);
         
             // atualiza arquivo de metadados
             fseek(arq_dados, 0L, SEEK_END);
