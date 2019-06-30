@@ -100,8 +100,9 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
 	int posicao = busca(cod, nome_arquivo_metadados, nome_arquivo_indice, nome_arquivo_dados, d);
     // abre o arquivo de dados
     FILE* arq_dados = fopen(nome_arquivo_dados, "rb+");
-    // abre o arquivo de metadados
+    // abre e lê o arquivo de metadados
     FILE* arq_metadados = fopen(nome_arquivo_metadados, "rb+");
+    TMetadados* metadados = le_metadados(arq_metadados);
     // vai para a posição onde o dado deve ser inserido
     fseek(arq_dados, posicao, SEEK_SET);
     // lê a página da memória
@@ -134,8 +135,7 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
     }else{
         // cria nova folha a partir da folha que está cheia
         TNoFolha* nova_folha = _particiona_folha(folha, d, nova_pizza);
-        // abre o arquivo de metadados e obtem o ponteiro da nova folha
-        TMetadados* metadados = le_metadados(arq_metadados);
+        // Obtem o ponteiro da nova folha
         int posicao_nova_folha = metadados->pont_prox_no_folha_livre;
         // atualiza os ponteiros de próximo das folhas
         nova_folha->pont_prox = folha->pont_prox;
@@ -143,7 +143,8 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
         // salva a folha inicial
         fseek(arq_dados, posicao, SEEK_SET);
         salva_no_folha(d, folha, arq_dados);
-        
+        // descobre em qual das folhas está o novo código
+        int ta_na_primeira = (folha->pizzas[0]->cod == cod || folha->pizzas[1]->cod) ? 1 : 0;
         // declara o código que vai subir para o pai
         int escolhido = nova_folha->pizzas[0]->cod;
         // abre o arquivo de índice
@@ -191,16 +192,51 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
             fclose(arq_indice);
             fclose(arq_metadados);
             fclose(arq_dados);
-            // todo
-            return posicao;
+            return ta_na_primeira ? posicao : posicao_nova_folha;
         // se a folha for a raiz
         }else{
-            printf("sem pai->");
-        }
-        // imprime_no_folha(d, folha);
-        // imprime_no_folha(d, nova_folha);
+            // cria o nó interno
+            TNoInterno* novo_no_interno = no_interno(d, 1, -1, 1);
+            // adiciona a chave que subiu
+            novo_no_interno->chaves[0] = nova_folha->pizzas[0]->cod;
+            // adiciona os ponteiros para as folhas
+            novo_no_interno->p[0] = posicao;
+            novo_no_interno->p[1] = posicao_nova_folha;
 
-        fclose(arq_dados);
+            // salva o novo nó folha
+            fseek(arq_dados, posicao_nova_folha, SEEK_SET);
+            salva_no_folha(d, nova_folha, arq_dados);
+            // salva o nó interno(pai) e salva sua posicao
+            fseek(arq_indice, 0, SEEK_END);
+            int posicao_pai = ftell(arq_indice);
+            salva_no_interno(d, novo_no_interno, arq_indice);
+            
+            // atualiza o ponteiro do pai nas folhas
+            for(i = 0; i <= novo_no_interno->m; i++){
+                fseek(arq_dados, novo_no_interno->p[i], SEEK_SET);
+                TNoFolha* no = le_no_folha(d, arq_dados);
+                no->pont_pai = posicao_pai;
+                fseek(arq_dados, novo_no_interno->p[i], SEEK_SET);
+                salva_no_folha(d, no, arq_dados);
+            }
+        
+            // atualiza arquivo de metadados
+            fseek(arq_dados, 0L, SEEK_END);
+            fseek(arq_indice, 0L, SEEK_END);
+            metadados->pont_prox_no_folha_livre = ftell(arq_dados);;
+            metadados->pont_prox_no_interno_livre = ftell(arq_indice);
+            metadados->raiz_folha = 0;
+            metadados->pont_raiz = 0;
+            fseek(arq_metadados, 0, SEEK_SET);
+            salva_metadados(metadados, arq_metadados);
+
+            // fecha os arquivos utilizados
+            fclose(arq_indice);
+            fclose(arq_metadados);
+            fclose(arq_dados);
+
+            return ta_na_primeira ? posicao : posicao_nova_folha;
+        }
         return INT_MAX;
     }
 }
