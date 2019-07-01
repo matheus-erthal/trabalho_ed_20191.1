@@ -252,7 +252,25 @@ void _redistribui(TNoInterno* no_interno, TNoFolha* p, TNoFolha* q, int posicao_
 
 }
 
-// void _concatena()
+// função de concatenar da exclusão
+void _concatena(TNoInterno* no_interno, TNoFolha* p, TNoFolha* q, int posicao_p, int posicao_q, int d){
+    int i;
+    for(i = 0; i < q->m; i++){
+        p->pizzas[p->m + i] = q->pizzas[i];
+        q->pizzas[i] = NULL;
+    }
+    p->m += q->m;
+    p->pont_prox = q->pont_prox;
+    for(i = posicao_q; i < no_interno->m; i++){
+        no_interno->p[i] = no_interno->p[i+1];
+    }
+    no_interno->p[i] = -1;
+    for(i = posicao_p; i < no_interno->m-1; i++){
+        no_interno->chaves[i] = no_interno->chaves[i+1];
+    }
+    no_interno->chaves[i] = -1;
+    no_interno->m--;
+}
 
 int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo_metadados, char *nome_arquivo_indice, char *nome_arquivo_dados, int d)
 {   
@@ -499,8 +517,13 @@ int exclui(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, cha
                         fseek(arq_dados, no_interno->p[posterior], SEEK_SET);
                         salva_no_folha(d, folha_posterior, arq_dados);
                     }else{
-                        printf("concatena com a anterior->\n");
-                        // concatena com a anterior
+                        TNoFolha* menor = folha_anterior->m < folha_posterior->m ? folha_anterior : folha_posterior;
+                        int posicao_pont_menor = folha_anterior->m < folha_posterior->m ? anterior : posterior;
+                        TNoFolha* p = posicao_pont_folha < posicao_pont_menor ? folha : menor;
+                        int posicao_p = posicao_pont_folha < posicao_pont_menor ? posicao_pont_folha : posicao_pont_menor;
+                        TNoFolha* q = posicao_pont_folha > posicao_pont_menor ? folha : menor;
+                        int posicao_q = posicao_pont_folha > posicao_pont_menor ? posicao_pont_folha : posicao_pont_menor;
+                        _concatena(no_interno, p, q, posicao_p, posicao_q, d);
                     }
                 }
             }else{
@@ -517,7 +540,11 @@ int exclui(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, cha
                     fseek(arq_dados, no_interno->p[anterior], SEEK_SET);
                     salva_no_folha(d, folha_anterior, arq_dados);
                 }else{
-                    printf("concatena com a anterior->\n");
+                    TNoFolha* p = posicao_pont_folha < anterior ? folha : folha_anterior;
+                    int posicao_p = posicao_pont_folha < anterior ? posicao_pont_folha : anterior;
+                    TNoFolha* q = posicao_pont_folha > anterior ? folha : folha_anterior;
+                    int posicao_q = posicao_pont_folha >anterior ? posicao_pont_folha : anterior;
+                    _concatena(no_interno, p, q, posicao_p, posicao_q, d);
                     // concatena folha anterior
                 }
             }
@@ -535,8 +562,11 @@ int exclui(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, cha
                 fseek(arq_dados, no_interno->p[posterior], SEEK_SET);
                 salva_no_folha(d, folha_posterior, arq_dados);
             }else{
-                printf("concatena com a posterior->\n");
-                // concatena folha posterior
+                TNoFolha* p = posicao_pont_folha < posterior ? folha : folha_posterior;
+                int posicao_p = posicao_pont_folha < posterior ? posicao_pont_folha : posterior;
+                TNoFolha* q = posicao_pont_folha > posterior ? folha : folha_posterior;
+                int posicao_q = posicao_pont_folha > posterior ? posicao_pont_folha : posterior;
+                _concatena(no_interno, p, q, posicao_p, posicao_q, d);
             }
         }
         fclose(arq_dados);
