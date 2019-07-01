@@ -192,7 +192,63 @@ void _atualiza_filhos(TNoInterno* p, int posicao_pai, FILE* arq_dados, FILE* arq
     }
 }
 
-void _redistribui(TNoInterno* no_interno, TNoFolha* p, TNoFolha* q, int d){
+// função de redistribuição da exclusão
+void _redistribui(TNoInterno* no_interno, TNoFolha* p, TNoFolha* q, int posicao_p, int posicao_q, int d){
+    TPizza** temp = (TPizza**)malloc(sizeof(TPizza*) * (p->m + q->m));
+    int i, cont_p = 0, cont_q = 0;
+    for(i = 0; i < (p->m + q->m); i++){
+        if(cont_p == p->m){
+            temp[i] = q->pizzas[cont_q];
+            cont_q++;
+        }else{
+            if(cont_q == q->m){
+                temp[i] = p->pizzas[cont_p];
+                cont_p++;
+            }else{
+                if(p->pizzas[cont_p] > q->pizzas[cont_q]){
+                    temp[i] = q->pizzas[cont_q];
+                    cont_q++;
+                }else{
+                    temp[i] = p->pizzas[cont_p];
+                    cont_p++;
+                }
+            }
+        }
+    }
+    for(i = 0; i < (p->m + q->m); i++){
+        if(i < d){
+            if(posicao_p < posicao_q){
+                p->pizzas[i] = temp[i];
+            }else{
+                q->pizzas[i] = temp[i];
+            }
+        }else{
+            if(posicao_p < posicao_q){
+                q->pizzas[i - d] = temp[i];
+            }else{
+                q->pizzas[i - d] = temp[i];
+            }
+        }
+    }
+
+    if(posicao_p < posicao_q){
+        no_interno->chaves[posicao_p] = q->pizzas[0]->cod;
+        q->m = (p->m + q->m) - d;
+        p->m = d;
+    }else{
+        no_interno->chaves[posicao_p-1] = p->pizzas[0]->cod;
+        p->m = (p->m + q->m) - d;
+        q->m = d;
+    }
+
+    for(i = p->m; i < 2 * d; i++){
+        p->pizzas[i] = NULL;
+    }
+    for(i = q->m; i < 2 * d; i++){
+        q->pizzas[i] = NULL;
+    }
+
+    free(temp);
 
 }
 
@@ -397,6 +453,7 @@ int exclui(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, cha
 {
     FILE* arq_dados = fopen(nome_arquivo_dados, "rb+");
     FILE* arq_indice = fopen(nome_arquivo_indice, "rb+");
+    FILE* arq_metadados = fopen(nome_arquivo_metadados, "rb+");
     int posicao_folha = busca(cod, nome_arquivo_metadados, nome_arquivo_indice, nome_arquivo_dados, d);
     fseek(arq_dados, posicao_folha, SEEK_SET);
     TNoFolha* folha = le_no_folha(d, arq_dados);
@@ -411,23 +468,36 @@ int exclui(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, cha
         fseek(arq_indice, folha->pont_pai, SEEK_SET);
         TNoInterno* no_interno = le_no_interno(d, arq_indice);
         for(i = 0; i <= no_interno->m && no_interno->p[i] != posicao_folha; i++);
+        int posicao_pont_folha = i;
         int anterior = i - 1 < 0 ? -1 : i - 1;
-        int proximo = i + 1 > no_interno->m ? -1 : i + 1;
-        TNoFolha* folha_escolhida;
-        int escolhido = 0;
+        int posterior = i + 1 > no_interno->m ? -1 : i + 1;
         if(anterior != -1){
-            if(proximo != -1){
+            if(posterior != -1){
                 fseek(arq_dados, no_interno->p[anterior], SEEK_SET);
                 TNoFolha* folha_anterior = le_no_folha(d, arq_dados);
-                fseek(arq_dados, no_interno->p[proximo], SEEK_SET);
+                fseek(arq_dados, no_interno->p[posterior], SEEK_SET);
                 TNoFolha* folha_posterior = le_no_folha(d, arq_dados);
                 if(folha_anterior->m > d){
-                    printf("redistribui com a anterior->\n");
                     // redistribui com a anterior
+                    _redistribui(no_interno, folha, folha_anterior, posicao_pont_folha, anterior, d);
+                    // salva as folhas e o nó pai
+                    fseek(arq_indice, folha->pont_pai, SEEK_SET);
+                    salva_no_interno(d, no_interno, arq_indice);
+                    fseek(arq_dados, no_interno->p[posicao_pont_folha], SEEK_SET);
+                    salva_no_folha(d, folha, arq_dados);
+                    fseek(arq_dados, no_interno->p[anterior], SEEK_SET);
+                    salva_no_folha(d, folha_anterior, arq_dados);
                 }else{
                     if(folha_posterior->m > d){
-                        printf("redistribui com a posterior->\n");
                         // redistribui com a posterior
+                        _redistribui(no_interno, folha, folha_posterior, posicao_pont_folha, posterior, d);
+                        // salva as folhas e o nó pai
+                        fseek(arq_indice, folha->pont_pai, SEEK_SET);
+                        salva_no_interno(d, no_interno, arq_indice);
+                        fseek(arq_dados, no_interno->p[posicao_pont_folha], SEEK_SET);
+                        salva_no_folha(d, folha, arq_dados);
+                        fseek(arq_dados, no_interno->p[posterior], SEEK_SET);
+                        salva_no_folha(d, folha_posterior, arq_dados);
                     }else{
                         printf("concatena com a anterior->\n");
                         // concatena com a anterior
@@ -437,29 +507,48 @@ int exclui(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, cha
                 fseek(arq_dados, no_interno->p[anterior], SEEK_SET);
                 TNoFolha* folha_anterior = le_no_folha(d, arq_dados);
                 if(folha_anterior->m > d){
-                    printf("redistribui com a anterior->\n");
-                    // redistribui folha anterior
+                    // redistribui com a anterior
+                    _redistribui(no_interno, folha, folha_anterior, posicao_pont_folha, anterior, d);
+                    // salva as folhas e o nó pai
+                    fseek(arq_indice, folha->pont_pai, SEEK_SET);
+                    salva_no_interno(d, no_interno, arq_indice);
+                    fseek(arq_dados, no_interno->p[posicao_pont_folha], SEEK_SET);
+                    salva_no_folha(d, folha, arq_dados);
+                    fseek(arq_dados, no_interno->p[anterior], SEEK_SET);
+                    salva_no_folha(d, folha_anterior, arq_dados);
                 }else{
                     printf("concatena com a anterior->\n");
                     // concatena folha anterior
                 }
             }
         }else{
-            fseek(arq_dados, no_interno->p[proximo], SEEK_SET);
+            fseek(arq_dados, no_interno->p[posterior], SEEK_SET);
             TNoFolha* folha_posterior = le_no_folha(d, arq_dados);
             if(folha_posterior->m > d){
-                printf("redistribui com a posterior->\n");
-                // redistribui folha proximo
+                // redistribui com a posterior
+                _redistribui(no_interno, folha, folha_posterior, posicao_pont_folha, posterior, d);
+                // salva as folhas e o nó pai
+                fseek(arq_indice, folha->pont_pai, SEEK_SET);
+                salva_no_interno(d, no_interno, arq_indice);
+                fseek(arq_dados, no_interno->p[posicao_pont_folha], SEEK_SET);
+                salva_no_folha(d, folha, arq_dados);
+                fseek(arq_dados, no_interno->p[posterior], SEEK_SET);
+                salva_no_folha(d, folha_posterior, arq_dados);
             }else{
                 printf("concatena com a posterior->\n");
-                // concatena folha proximo
+                // concatena folha posterior
             }
         }
+        fclose(arq_dados);
+        fclose(arq_indice);
+        fclose(arq_metadados);
+        return posicao_folha;
     }else{
         fseek(arq_dados, posicao_folha, SEEK_SET);
         salva_no_folha(d, folha, arq_dados);
         fclose(arq_dados);
         fclose(arq_indice);
+        fclose(arq_metadados);
         return posicao_folha;
     }
     //TODO: Inserir aqui o codigo do algoritmo de remocao
