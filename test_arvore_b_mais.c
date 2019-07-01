@@ -956,7 +956,7 @@ BEGIN_TESTS();
                                                                          2 * tamanho_no_interno(D),
                                                                          37
                                                          ),
-                                                         cria_no_interno(D, 4, 0, 1, 2 * 2 + 1, //essa eh a nova raiz da arvore
+                                                         cria_no_interno(D, 4, -1, 1, 2 * 2 + 1, //essa eh a nova raiz da arvore
                                                                          0 * tamanho_no_folha(D),
                                                                          2 * tamanho_no_folha(D),
                                                                          3 * tamanho_no_folha(D),
