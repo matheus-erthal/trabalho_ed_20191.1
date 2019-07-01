@@ -192,6 +192,12 @@ void _atualiza_filhos(TNoInterno* p, int posicao_pai, FILE* arq_dados, FILE* arq
     }
 }
 
+void _redistribui(TNoInterno* no_interno, TNoFolha* p, TNoFolha* q, int d){
+
+}
+
+// void _concatena()
+
 int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo_metadados, char *nome_arquivo_indice, char *nome_arquivo_dados, int d)
 {   
     // busca a posição onde o dado deve ser inserido
@@ -389,7 +395,74 @@ int insere(int cod, char *nome, char *categoria, float preco, char *nome_arquivo
 
 int exclui(int cod, char *nome_arquivo_metadados, char *nome_arquivo_indice, char *nome_arquivo_dados, int d)
 {
-	//TODO: Inserir aqui o codigo do algoritmo de remocao
+    FILE* arq_dados = fopen(nome_arquivo_dados, "rb+");
+    FILE* arq_indice = fopen(nome_arquivo_indice, "rb+");
+    int posicao_folha = busca(cod, nome_arquivo_metadados, nome_arquivo_indice, nome_arquivo_dados, d);
+    fseek(arq_dados, posicao_folha, SEEK_SET);
+    TNoFolha* folha = le_no_folha(d, arq_dados);
+    int i, j;
+    for(i = 0; i < folha->m && cod != folha->pizzas[i]->cod; i++);
+    folha->m--;
+    for(j = i; j < folha->m; j++){
+        folha->pizzas[j] = folha->pizzas[j + 1];
+    }
+    folha->pizzas[folha->m] = NULL;
+    if(folha->m < d){
+        fseek(arq_indice, folha->pont_pai, SEEK_SET);
+        TNoInterno* no_interno = le_no_interno(d, arq_indice);
+        for(i = 0; i <= no_interno->m && no_interno->p[i] != posicao_folha; i++);
+        int anterior = i - 1 < 0 ? -1 : i - 1;
+        int proximo = i + 1 > no_interno->m ? -1 : i + 1;
+        TNoFolha* folha_escolhida;
+        int escolhido = 0;
+        if(anterior != -1){
+            if(proximo != -1){
+                fseek(arq_dados, no_interno->p[anterior], SEEK_SET);
+                TNoFolha* folha_anterior = le_no_folha(d, arq_dados);
+                fseek(arq_dados, no_interno->p[proximo], SEEK_SET);
+                TNoFolha* folha_posterior = le_no_folha(d, arq_dados);
+                if(folha_anterior->m > d){
+                    printf("redistribui com a anterior->\n");
+                    // redistribui com a anterior
+                }else{
+                    if(folha_posterior->m > d){
+                        printf("redistribui com a posterior->\n");
+                        // redistribui com a posterior
+                    }else{
+                        printf("concatena com a anterior->\n");
+                        // concatena com a anterior
+                    }
+                }
+            }else{
+                fseek(arq_dados, no_interno->p[anterior], SEEK_SET);
+                TNoFolha* folha_anterior = le_no_folha(d, arq_dados);
+                if(folha_anterior->m > d){
+                    printf("redistribui com a anterior->\n");
+                    // redistribui folha anterior
+                }else{
+                    printf("concatena com a anterior->\n");
+                    // concatena folha anterior
+                }
+            }
+        }else{
+            fseek(arq_dados, no_interno->p[proximo], SEEK_SET);
+            TNoFolha* folha_posterior = le_no_folha(d, arq_dados);
+            if(folha_posterior->m > d){
+                printf("redistribui com a posterior->\n");
+                // redistribui folha proximo
+            }else{
+                printf("concatena com a posterior->\n");
+                // concatena folha proximo
+            }
+        }
+    }else{
+        fseek(arq_dados, posicao_folha, SEEK_SET);
+        salva_no_folha(d, folha, arq_dados);
+        fclose(arq_dados);
+        fclose(arq_indice);
+        return posicao_folha;
+    }
+    //TODO: Inserir aqui o codigo do algoritmo de remocao
     return INT_MAX;
 }
 
